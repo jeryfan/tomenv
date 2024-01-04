@@ -6,10 +6,24 @@ services:
     ports:
       - "27017:27017"
     volumes:
-      - /Users/fanjunjie/Desktop/data/mongo:/data/db
+      - ./mongo:/data/db
     environment:
       - MONGO_INITDB_ROOT_USERNAME=root
       - MONGO_INITDB_ROOT_PASSWORD=root
+    networks:
+      - tomnet
+  redis:
+    container_name: redis
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis:/data
+    command: redis-server --requirepass 123456
+    environment:
+      - name=value
+    networks:
+      - tomnet
   selfpro:
     build:
       context: .
@@ -25,4 +39,10 @@ services:
       - mongo
     environment:
       - MONGO_URI:"mongodb://root:root@mongo:27017/admin?authSource=admin"
+    networks:
+      - tomnet
+networks:
+  tomnet:
+    driver:bridge
+
       
