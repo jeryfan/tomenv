@@ -20,8 +20,6 @@ services:
     volumes:
       - ./redis:/data
     command: redis-server --requirepass 123456
-    environment:
-      - name=value
     networks:
       - tomnet
   selfpro:
@@ -43,6 +41,6 @@ services:
       - tomnet
 networks:
   tomnet:
-    driver:bridge
+    driver: bridge
 
       
