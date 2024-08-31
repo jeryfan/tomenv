@@ -21,3 +21,9 @@ docker build -f Dockerfile.base -t basenv --build-arg local=1 --build-arg node_p
 ```shell
 docker build -f Dockerfile.base -t basenv .
 ```
+
+#### 启动容器
+
+```shell
+docker run -d -p 3000:3000 -p 22:22 --name basenv basenv
+```
