@@ -80,6 +80,8 @@ services:
     ports:
       - "80:80"
     volumes:
+      - ./nginx/crawlab.conf:/etc/nginx/conf.d/crawlab.conf
+      - ./nginx/proxy.conf:/etc/nginx/proxy.conf
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
     restart: unless-stopped
 

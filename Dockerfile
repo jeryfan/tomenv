@@ -1,14 +1,46 @@
-FROM ubuntu
 
-RUN apt update && apt install -y wget curl openssh-server vim git xz-utils && mkdir /var/run/sshd && echo 'root:123' | chpasswd && sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && mkdir /data && mkdir ~/.pip && cd ~/.pip && echo [global] >> pip.conf && echo "index-url = http://mirrors.aliyun.com/pypi/simple/">>pip.conf && echo [install]>>pip.conf && echo "trusted-host=mirrors.aliyun.com">>pip.conf
+FROM ubuntu:24.04 AS base
+USER root
 
-# miniconda
-RUN mkdir -p ~/miniconda3 && wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aarch64.sh -O ~/miniconda3/miniconda.sh && bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3 && rm -rf ~/miniconda3/miniconda.sh && ~/miniconda3/bin/conda init bash
+ARG ARCH=arm64
+ENV LIGHTEN=0
 
-# node
-RUN mkdir -p ~/node && cd ~/node && wget https://nodejs.org/dist/v20.10.0/node-v20.10.0-linux-arm64.tar.xz && tar -xvf node-* && mv node-*/* . && rm -rf node-* && echo NODE_PATH=/root/node/bin >> ~/.bashrc && echo 'PATH=$PATH:$NODE_PATH' >> ~/.bashrc
+WORKDIR /workspace
 
-WORKDIR /data
 
-EXPOSE 22
-CMD ["/usr/sbin/sshd", "-D"]
+RUN rm -f /etc/apt/apt.conf.d/docker-clean \
+    && echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
+
+RUN --mount=type=cache,id=base_apt,target=/var/cache/apt,sharing=locked \
+    apt update && apt-get --no-install-recommends install -y ca-certificates
+
+RUN sed -i 's|http://archive.ubuntu.com|https://mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list.d/ubuntu.sources
+
+RUN --mount=type=cache,id=base_apt,target=/var/cache/apt,sharing=locked \
+    apt update && apt install -y curl libpython3-dev nginx libglib2.0-0 libglx-mesa0 pkg-config libicu-dev libgdiplus default-jdk python3-pip pipx \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN --mount=type=cache,id=base_apt,target=/var/cache/apt,sharing=locked \
+    apt update && apt install -y nodejs npm cargo && \
+    rm -rf /var/lib/apt/lists/*
+
+
+RUN pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && pip3 config set global.trusted-host "pypi.tuna.tsinghua.edu.cn mirrors.pku.edu.cn" && pip3 config set global.extra-index-url "https://mirrors.pku.edu.cn/pypi/web/simple" \
+    && pipx install poetry \
+    && /root/.local/bin/poetry self add poetry-plugin-pypi-mirror
+
+RUN --mount=type=bind,source=libssl1.1_1.1.1f-1ubuntu2.23_${ARCH}.deb,target=/root/libssl1.1_1.1.1f-1ubuntu2_${ARCH}.deb
+
+ENV PYTHONDONTWRITEBYTECODE=1 DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+ENV PATH=/root/.local/bin:$PATH
+# Configure Poetry
+ENV POETRY_NO_INTERACTION=1
+ENV POETRY_VIRTUALENVS_IN_PROJECT=true
+ENV POETRY_VIRTUALENVS_CREATE=true
+ENV POETRY_REQUESTS_TIMEOUT=15
+ENV POETRY_PYPI_MIRROR_URL=https://pypi.tuna.tsinghua.edu.cn/simple/
+
+
+# COPY entrypoint.sh ./entrypoint.sh
+# RUN chmod +x ./entrypoint.sh
+# ENTRYPOINT ["./entrypoint.sh"]
